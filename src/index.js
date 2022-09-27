@@ -70,7 +70,7 @@ const translations = {
 	},
 	redirectionAlertMessage: {
 		de: 'Du kannst dir die gewählte Zugverbindung auf der Website der Deutschen Bahn anschauen, oder dich zum Preiskalender für diese Strecke weiterleiten lassen. Bitte beachte, dass der Kalender leider nur für von der DB beworbene Fernverkehrsverbindungen funktioniert, für alle anderen Verbindungen informiere dich bitte auf den Seiten der lokalen Betreiber.',
-		en: 'You can check details for the selected train on the Deutsche Bahn (DB) website, or be forwarded to our price calendar for that route. Please note that the calendar only includes prices for tickes sold by DB Fernverkehr. Please check the corresponding vendor\'s website for all other connections.',
+		en: 'You can check details for the selected train on the Deutsche Bahn (DB) website. Please check the corresponding vendor\'s website for all other connections.',
 	},
 	redirectionAlertLocalTrainWarning: {
 		de: 'Bitte beachte außerdem, dass aus technischen Gründen einige Züge fälschlicherweise als Teil des Nahverkehrs angezeigt werden können, obwohl dort keine Nahverkehrstickets gelten (z.B. Flixtrain). Bitte beachte dazu auch die Hinweise auf bahn.de!',
@@ -132,7 +132,7 @@ const translate = token => {
 	return translationForLanguage
 }
 
-mapboxGl.accessToken = 'pk.eyJ1IjoianVsaXVzdGUiLCJhIjoiY2t2N3UyeDZ2MjdqZjJvb3ZmcWNyc2QxbSJ9.oB7xzSTcmeDMcl4DhjSl0Q'
+mapboxGl.accessToken = 'pk.eyJ1Ijoid2FyZGJleWVucyIsImEiOiJjand6M29pcGIwd3M1NDVwbXFzcDg1eW05In0.mZ5v430UPTeEALdzjIt_IQ'
 const map = new mapboxGl.Map({
 	container: 'map',
 	style: 'mapbox://styles/mapbox/light-v10',
@@ -183,9 +183,9 @@ map.addControl(geocoder)
 
 let popupOpenSince = null
 let popupOpenFor = null
-let successfulSearches = 0
 const selectLocation = async (id, local) => {
 	const origin = await stationById(id)
+	console.log(origin)
 	if (!origin) {
 		const error = new Error('Station not found.')
 		error.code = 'STATION_NOT_FOUND'
@@ -225,8 +225,6 @@ const selectLocation = async (id, local) => {
 					name: r.name,
 					duration: durationCategory(r.duration),
 					durationMinutes: r.duration,
-					calendarUrl: r.calendarUrl,
-					dbUrlGerman: r.dbUrlGerman,
 					dbUrlEnglish: r.dbUrlEnglish,
 				},
 			})), x => (-1) * x.properties.duration)
@@ -285,9 +283,6 @@ const selectLocation = async (id, local) => {
 						: translate('redirectionAlertMessage'),
 					showCancelButton: true,
 					cancelButtonText: translate('redirectionAlertCancel'),
-					showDenyButton: true,
-					denyButtonText: translate('redirectionAlertCalendar'),
-					denyButtonColor: '#999999',
 					showConfirmButton: true,
 					confirmButtonText: translate('redirectionAlertDb'),
 					confirmButtonColor: '#3085d6',
@@ -330,8 +325,6 @@ const selectLocation = async (id, local) => {
 				error.code = 'NO_RESULTS'
 				throw error
 			}
-
-			successfulSearches += 1
 		})
 }
 
@@ -348,33 +341,20 @@ const onSelectLocation = async (id, local) => {
 		showCancelButton: false,
 	})
 
-	await selectLocation(id, local)
-		.then(async () => {
-			if (successfulSearches !== 4) return Sweetalert.close()
-			// show donation request once, after the user already completed three searches successfully
-			const { isConfirmed } = await Sweetalert.fire({
-				title: translate('donationAlertTitle'),
-				text: translate('donationAlertMessage'),
-				showDenyButton: true,
-				denyButtonText: translate('donationAlertSkip'),
-				denyButtonColor: '#333333',
-				showConfirmButton: true,
-				confirmButtonText: translate('donationAlertContinue'),
-				confirmButtonColor: '#3085d6',
-			})
-			if (isConfirmed) window.open(donationUrl, 'target_' + donationUrl)
-		})
-		.catch(error => {
-			Sweetalert.disableLoading()
-			if (error.code === 'STATION_NOT_FOUND') {
-				return Sweetalert.fire({ title: translate('stationNotFoundAlertTitle'), text: translate('stationNotFoundAlertMessage'), icon: 'error', confirmButtonColor: '#3085d6' })
-			}
-			if (error.code === 'NO_RESULTS') {
-				return Sweetalert.fire({ title: translate('noResultsAlertTitle'), text: translate('noResultsAlertMessage'), icon: 'warning', confirmButtonColor: '#3085d6' })
-			}
-			// @todo give more info on server errors
-			return Sweetalert.fire({ title: translate('unknownErrorAlertTitle'), text: translate('unknownErrorAlertMessage'), icon: 'error', confirmButtonColor: '#3085d6' })
-		})
+	await selectLocation(id, local).then(async () => {
+		return Sweetalert.close()
+	}).catch(error => {
+		console.log(error)
+		Sweetalert.disableLoading()
+		if (error.code === 'STATION_NOT_FOUND') {
+			return Sweetalert.fire({ title: translate('stationNotFoundAlertTitle'), text: translate('stationNotFoundAlertMessage'), icon: 'error', confirmButtonColor: '#3085d6' })
+		}
+		if (error.code === 'NO_RESULTS') {
+			return Sweetalert.fire({ title: translate('noResultsAlertTitle'), text: translate('noResultsAlertMessage'), icon: 'warning', confirmButtonColor: '#3085d6' })
+		}
+		// @todo give more info on server errors
+		return Sweetalert.fire({ title: translate('unknownErrorAlertTitle'), text: translate('unknownErrorAlertMessage'), icon: 'error', confirmButtonColor: '#3085d6' })
+	})
 }
 
 const localTransitOnly = () => queryState.get('local') === 'true'

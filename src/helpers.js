@@ -5,9 +5,14 @@ import enLocale from 'i18n-iso-countries/langs/en.json'
 import deLocale from 'i18n-iso-countries/langs/de.json'
 
 export const fetchStation = async (query) => {
-	return Promise.race([
-		fetch(`https://v5.db.transport.rest/locations?query=${query}&poi=false&addresses=false`),
-		fetch(`https://v5.db.juliustens.eu/locations?query=${query}&poi=false&addresses=false`),
+	const urlA = new URL('https://v5.db.transport.rest/locations?poi=false&addresses=false')
+	const urlB = new URL('https://v5.db.juliustens.eu/locations?poi=false&addresses=false')
+	urlA.searchParams.append('query', query)
+	urlB.searchParams.append('query', query)
+
+	return Promise.any([
+		fetch(urlA),
+		fetch(urlB),
 	])
 }
 
